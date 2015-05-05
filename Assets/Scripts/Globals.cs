@@ -12,6 +12,26 @@ public class Globals : MonoBehaviour {
 		}
 	}
 
+	static CharacterControls playerScript;
+	static public CharacterControls PlayerScript{
+		get{
+			if(playerScript == null)
+				playerScript = playerGo.GetComponent<CharacterControls>();
+			return playerScript;
+		}
+	}
+
+	static Rigidbody2D playerRigid;
+	static public Rigidbody2D PlayerRigid{
+		get{
+			if(playerRigid == null)
+				playerRigid = playerGo.GetComponent<Rigidbody2D>();
+			return playerRigid;
+		}
+	}
+
+
+
 	static GameObject mainCamera;
 	static public GameObject MainCamera {
 		get{
