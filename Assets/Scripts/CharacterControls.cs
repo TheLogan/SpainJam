@@ -5,12 +5,19 @@ public class CharacterControls : MonoBehaviour {
 
 	Transform moveFrom;
 	Transform moveTo;
+	SpriteRenderer spriteRenderer;
+	Animator anim;
+	bool playIdleAnim = false;
 
 	[SerializeField]
 	UnityStandardAssets._2D.Platformer2DUserControl characterInputs;
-
 	[SerializeField]
 	UnityStandardAssets._2D.PlatformerCharacter2D charContr;
+
+	void Start(){
+		spriteRenderer = GetComponent<SpriteRenderer>();
+		anim = GetComponent<Animator>();
+	}
 
 	public void MoveToRoom(GameObject oldDoor, GameObject nextDoor){
 		moveFrom = oldDoor.transform;
@@ -20,8 +27,8 @@ public class CharacterControls : MonoBehaviour {
 	}
 
 	IEnumerator ForceMovePlayer(){
-//		characterInputs.enabled = false;
-//		charContr.enabled = false;
+		characterInputs.enabled = false;
+		charContr.enabled = false;
 		bool playerHitTarget = false;
 		float f = 0;
 		bool OldRoomGone = false;
@@ -35,6 +42,7 @@ public class CharacterControls : MonoBehaviour {
 			if(!OldRoomGone && distanceToOld > distanceToNew * 10){
 				OldRoomGone = true;
 				moveFrom.parent.GetComponent<RoomSettings>().PlayerHasLeft();
+				moveTo.parent.GetComponent<RoomSettings>().PlayerHasEntered();
 			}
 
 			if(OldRoomGone && distanceToNew < 0.5f){
@@ -43,7 +51,25 @@ public class CharacterControls : MonoBehaviour {
 			yield return new WaitForFixedUpdate();
 		}
 		Globals.PlayerRigid.isKinematic = false;
-//		characterInputs.enabled = true;
-//		charContr.enabled = true;
+		characterInputs.enabled = true;
+		charContr.enabled = true;
+	}
+
+	float idleEyesCount = 0;
+
+	void Update(){
+		if(anim.GetCurrentAnimatorStateInfo(0).IsName("Idle") || anim.GetCurrentAnimatorStateInfo(0).IsName("IdleClosed")){
+			if(idleEyesCount <= 0){
+				float val = Random.Range(0f,100f);
+
+				if(val < 10){
+					anim.SetBool("Eyes", false);
+					idleEyesCount = Random.Range (0.25f, 0.5f);
+				}else
+					anim.SetBool("Eyes", true);
+			}else{
+				idleEyesCount -= Time.deltaTime;
+			}
+		}
 	}
 }

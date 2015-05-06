@@ -30,6 +30,13 @@ public class Globals : MonoBehaviour {
 		}
 	}
 
+	static float roomDistance = 10;
+	static public float RoomDistance{
+		get{
+			return roomDistance;
+		}
+	}
+
 
 
 	static GameObject mainCamera;

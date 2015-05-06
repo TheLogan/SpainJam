@@ -10,28 +10,50 @@ public class RoomSettings : MonoBehaviour
 	SpriteRenderer[]
 		roomSprites;
 	[SerializeField]
-	Color
-		roomColour = Color.white;
+	Color roomColour = Color.white;
 	List<Doorway> doorways;
 	[SerializeField]
-	GameObject
-		player;
+	GameObject player;
 	[SerializeField]
-	bool
-		startLighted;
+	bool startLighted;
 	[SerializeField]
-	GameObject
-		myCamGo;
+	GameObject myCamGo;
 	[SerializeField]
-	float
-		gravity = 3f;
+	float gravity = 3f;
 	[SerializeField]
-	float
-		timeScale = 1;
+	float timeScale = 1;
 	[SerializeField]
-	bool
-		rotating = false;
+	bool rotating = false;
+
+	public bool Rotating {
+		get{
+			return rotating;
+		}
+	}
+
 	float rotationCountdown;
+
+	bool playerIsLeaving = false;
+
+	public bool StartedRotated {
+		get;
+		set;
+	}
+
+	public Transform NextRoom {
+		get;
+		set;
+	}
+
+	public Transform NextRoomSpawnPoint {
+		get;
+		set;
+	}
+
+	public GameObject PlayerEnteredDoorway {
+		get;
+		set;
+	}
 
 	void Start ()
 	{
@@ -42,6 +64,19 @@ public class RoomSettings : MonoBehaviour
 
 		if (startLighted)
 			PlayerEnters ();
+
+		foreach (var item in roomSprites) {
+			item.color = Color.black;
+		}
+	}
+
+	void OnEnable(){
+		StartedRotated = false;
+		rotationCountdown = 0.75f;
+		transform.rotation = Quaternion.Euler( Vector3.zero);
+		playerIsLeaving = false;
+		NextRoom = null;
+		NextRoomSpawnPoint = null;
 	}
 
 	public void PlayerEnters ()
@@ -51,7 +86,6 @@ public class RoomSettings : MonoBehaviour
 
 	IEnumerator PlayerEntersInternal (GameObject playerGO)
 	{
-		print ("Apply options");
 		//TODO if gravity is changed, so should jumpforce
 		playerGO.GetComponent<Rigidbody2D> ().gravityScale = gravity;
 		Time.timeScale = timeScale;
@@ -70,19 +104,38 @@ public class RoomSettings : MonoBehaviour
 		}
 	}
 
+	public void PlayerHasEntered(){
+		if(StartedRotated){
+			transform.rotation = Quaternion.Euler(Vector3.zero);
+			Globals.PlayerGo.transform.rotation = Quaternion.Euler(Vector3.zero);
+			print(NextRoomSpawnPoint);
+			Globals.PlayerGo.transform.position = PlayerEnteredDoorway.transform.position;
+		}
+	}
+	
+
 	void FixedUpdate ()
 	{
+		//TODO if rotation, then the second room should move to fit.
 		if (rotating) {
 			if (rotationCountdown <= 0) {
 				transform.Rotate (transform.forward * 0.2f);
 			} else if (rotationCountdown > 0) {
 				rotationCountdown -= Time.fixedDeltaTime;
 			}
+
+
+			if(playerIsLeaving){
+				NextRoom.rotation = transform.rotation;
+				NextRoom.position = NextRoomSpawnPoint.position;
+//				selectedRoomGo.transform.position = transform.parent.position + direction * 10;
+			}
 		}
 	}
 
 	public void PlayerLeaves ()
 	{
+		playerIsLeaving = true;
 		StartCoroutine (PlayerLeavesInternal ());
 	}
 
@@ -105,22 +158,24 @@ public class RoomSettings : MonoBehaviour
 		}
 	}
 
+
+
 	public GameObject GetMatchingDoor (Directions doorDirection)
 	{
-		Directions wantedDirection = Directions.down;
+		Directions wantedDirection = Directions.Down;
 
 		switch (doorDirection) {
-		case Directions.down:
-			wantedDirection = Directions.up;
+		case Directions.Down:
+			wantedDirection = Directions.Up;
 			break;
-		case Directions.up:
-			wantedDirection = Directions.down;
+		case Directions.Up:
+			wantedDirection = Directions.Down;
 			break;
-		case Directions.left:
-			wantedDirection = Directions.right;
+		case Directions.Left:
+			wantedDirection = Directions.Right;
 			break;
-		case Directions.right:
-			wantedDirection = Directions.left;
+		case Directions.Right:
+			wantedDirection = Directions.Left;
 			break;
 		}
 
@@ -129,11 +184,6 @@ public class RoomSettings : MonoBehaviour
 			Debug.LogError ("The opposite doorway does not exist");
 			
 		return go;
-	}
-
-	void Update ()
-	{
-		//TODO if rotation, then the second room should move to fit.
 	}
 } 
 
