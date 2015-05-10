@@ -30,7 +30,7 @@ public class Globals : MonoBehaviour {
 		}
 	}
 
-	static float roomDistance = 10;
+	static float roomDistance = 27.2f;
 	static public float RoomDistance{
 		get{
 			return roomDistance;

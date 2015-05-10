@@ -11,13 +11,44 @@ public class Doorway : MonoBehaviour
 	[SerializeField]
 	Directions doorwayDirection;
 	[SerializeField]
-	List<GameObject> availableRooms;
+	public List<GameObject> availableRooms;
 
+	[SerializeField]
+	bool isLocked = false;
 
 
 	Transform roomSpawnPoint;
 	BoxCollider2D lockableWall;
+	BoxCollider2D LockableWall{
+		get{
+			if(lockableWall == null){
+				BoxCollider2D[] colliders = GetComponents<BoxCollider2D>();
+
+				foreach (BoxCollider2D col in colliders) {
+					if(!col.isTrigger)
+						lockableWall = col;
+				}
+			}
+			return lockableWall;
+		}
+	}
+
 	BoxCollider2D triggerCollider;
+	BoxCollider2D TriggerCollider{
+		get{
+			if(triggerCollider == null){
+				BoxCollider2D[] colliders = GetComponents<BoxCollider2D>();
+				
+				foreach (BoxCollider2D col in colliders) {
+					if(col.isTrigger)
+						triggerCollider = col;
+				}
+				return triggerCollider;
+			}
+			return triggerCollider;
+		}
+	}
+
 	RoomSettings roomScript;
 	int selectedRoom;
 	bool isLinking = false;
@@ -36,7 +67,9 @@ public class Doorway : MonoBehaviour
 		roomScript = transform.parent.GetComponent<RoomSettings> ();
 
 		BoxCollider2D[] colliders = GetComponents<BoxCollider2D>();
+		print (colliders.Length);
 		foreach (BoxCollider2D col in colliders) {
+			print ("is trigger : " + col.isTrigger);
 			if(col.isTrigger)
 				triggerCollider = col;
 			else
@@ -48,14 +81,13 @@ public class Doorway : MonoBehaviour
 
 	void OnEnable(){
 		selectedRoom = Random.Range (0, availableRooms.Count);
-//		canEnter 
 	}
 
 	bool canEnter = true;
 
 	void OnTriggerEnter2D (Collider2D other)
 	{
-		if (canEnter) {
+		if (!isLocked && canEnter) {
 			StartCoroutine(CoolDown());
 			bool playerOnRightSide = PlayerOnRightSide (other.gameObject);
 
@@ -91,6 +123,13 @@ public class Doorway : MonoBehaviour
 						selectedRoomSettings.StartedRotated = true;
 					}
 					Globals.MainCamera.GetComponent<CameraController> ().PlayerMovedRoom (selectedRoomGo);
+
+					print (selectedRoomGo);
+					print (selectedRoomGo.GetComponent<RoomSettings>());
+					print (doorwayDirection);
+					print (selectedRoomGo.GetComponent<RoomSettings>().GetMatchingDoor(doorwayDirection));
+
+
 					GameObject nextDoor = selectedRoomGo.GetComponent<RoomSettings>().GetMatchingDoor(doorwayDirection);
 					selectedRoomSettings.PlayerEnteredDoorway = nextDoor;
 					Globals.PlayerGo.GetComponent<CharacterControls>().MoveToRoom(gameObject, nextDoor);
@@ -98,44 +137,37 @@ public class Doorway : MonoBehaviour
 					roomScript.PlayerLeaves ();
 				}
 			}else{
-				lockableWall.enabled = true;
+				LockableWall.enabled = true;
 			}
 		}
 	}
 
 	void OnTriggerExit2D(Collider2D other){
-		if(lockableWall.enabled && other.tag == "Player"){
+		if(LockableWall.enabled && other.tag == "Player"){
 			StartCoroutine(CoolDown());
 		}
 	}
 
 	void Update(){
-		if(!canEnter){
-			lockableWall.enabled = true;
+		if(!canEnter || isLocked){
+			LockableWall.enabled = true;
 		}else{
-			lockableWall.enabled = false;
+			LockableWall.enabled = false;
 		}
 	}
 
-	bool PlayerOnRightSide (GameObject player) //FIXME I'm borked!!!
+	bool PlayerOnRightSide (GameObject player) //FIXME I'm borked!!! Rotation should be taken into account
 	{
 		bool shouldReturnTrue = false;
+
 		switch (doorwayDirection) {
-		case Directions.Down: 
-			if (player.transform.position.y > transform.position.y + triggerCollider.offset.y)
-				shouldReturnTrue = true;
-			break;
-		case Directions.Up:
-			if (player.transform.position.y < transform.position.y + triggerCollider.offset.y)
-				shouldReturnTrue = true;
-			break;
 		case Directions.Left:
-			if (player.transform.position.x > transform.position.x + triggerCollider.offset.x) {
+			if (player.transform.position.x > transform.position.x + TriggerCollider.offset.x) {
 				shouldReturnTrue = true;
 			}
 			break;
 		case Directions.Right:
-			if (player.transform.position.x < transform.position.x + triggerCollider.offset.x) {
+			if (player.transform.position.x < transform.position.x + TriggerCollider.offset.x) {
 				shouldReturnTrue = true;
 			}
 			break;
@@ -144,16 +176,14 @@ public class Doorway : MonoBehaviour
 	}
 
 
-
 	IEnumerator CoolDown ()
 	{
 		canEnter = false;
-//		yield return new WaitForSeconds (0.75f);
-		while(Vector3.Distance (transform.position, Globals.PlayerGo.transform.position) < 1.5f){
+		while(Vector3.Distance (transform.position, Globals.PlayerGo.transform.position) < 3.5f){
 			yield return new WaitForEndOfFrame();
 		}
 		canEnter = true;
-		lockableWall.enabled = false;
+		LockableWall.enabled = false;
 	}
 
 	void PlaceSpawnPoint ()
@@ -177,6 +207,10 @@ public class Doorway : MonoBehaviour
 		}
 
 		roomSpawnPoint = go.transform;
+	}
+
+	public void Unlock(){
+		isLocked = false;
 	}
 }
 public enum Directions

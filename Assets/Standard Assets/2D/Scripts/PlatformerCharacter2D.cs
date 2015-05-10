@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace UnityStandardAssets._2D
 {
+	[RequireComponent(typeof(AudioSource))]
     public class PlatformerCharacter2D : MonoBehaviour
     {
         [SerializeField] private float m_MaxSpeed = 10f;                    // The fastest the player can travel in the x axis.
@@ -20,6 +21,9 @@ namespace UnityStandardAssets._2D
         private Rigidbody2D m_Rigidbody2D;
         private bool m_FacingRight = true;  // For determining which way the player is currently facing.
 
+		[SerializeField]
+		AudioSource myAudio;
+
         private void Awake()
         {
             // Setting up references.
@@ -27,6 +31,8 @@ namespace UnityStandardAssets._2D
             m_CeilingCheck = transform.Find("CeilingCheck");
             m_Anim = GetComponent<Animator>();
             m_Rigidbody2D = GetComponent<Rigidbody2D>();
+
+			myAudio = GetComponent<AudioSource>();
         }
 
 
@@ -92,6 +98,7 @@ namespace UnityStandardAssets._2D
             // If the player should jump...
             if (m_Grounded && jump && m_Anim.GetBool("Ground"))
             {
+				myAudio.Play();
                 // Add a vertical force to the player.
                 m_Grounded = false;
                 m_Anim.SetBool("Ground", false);

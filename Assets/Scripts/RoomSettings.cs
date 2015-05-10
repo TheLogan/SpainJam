@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityStandardAssets._2D;
 
 public class RoomSettings : MonoBehaviour
 {
@@ -12,6 +13,15 @@ public class RoomSettings : MonoBehaviour
 	[SerializeField]
 	Color roomColour = Color.white;
 	List<Doorway> doorways;
+	List<Doorway> Doorways{
+		get{
+			if(doorways == null || doorways.Count == 0){
+				doorways = gameObject.GetComponentsInChildren<Doorway> ().ToList ();
+			}
+			return doorways;
+		}
+	}
+
 	[SerializeField]
 	GameObject player;
 	[SerializeField]
@@ -24,6 +34,9 @@ public class RoomSettings : MonoBehaviour
 	float timeScale = 1;
 	[SerializeField]
 	bool rotating = false;
+
+	[SerializeField]
+	Color vanishColour;
 
 	public bool Rotating {
 		get{
@@ -55,12 +68,11 @@ public class RoomSettings : MonoBehaviour
 		set;
 	}
 
+
 	void Start ()
 	{
 		rotationCountdown = 0.5f;
 		roomSprites = GetComponentsInChildren<SpriteRenderer> ();
-
-		doorways = gameObject.GetComponentsInChildren<Doorway> ().ToList ();
 
 		if (startLighted)
 			PlayerEnters ();
@@ -73,7 +85,7 @@ public class RoomSettings : MonoBehaviour
 	void OnEnable(){
 		StartedRotated = false;
 		rotationCountdown = 0.75f;
-		transform.rotation = Quaternion.Euler( Vector3.zero);
+//		transform.rotation = Quaternion.Euler( Vector3.zero);
 		playerIsLeaving = false;
 		NextRoom = null;
 		NextRoomSpawnPoint = null;
@@ -86,19 +98,12 @@ public class RoomSettings : MonoBehaviour
 
 	IEnumerator PlayerEntersInternal (GameObject playerGO)
 	{
-		//TODO if gravity is changed, so should jumpforce
-		playerGO.GetComponent<Rigidbody2D> ().gravityScale = gravity;
-		Time.timeScale = timeScale;
-
-
-		if (myCamGo != null)
-			myCamGo.SetActive (true);
-
+		ApplyEffectsToPlayer();
 		float f = 0;
 		while (f < 1) {
 			f += Time.deltaTime;
 			foreach (var sprite in roomSprites) {
-				sprite.color = Color.Lerp (Color.black, roomColour, f);
+				sprite.color = Color.Lerp (vanishColour, roomColour, f);
 			}
 			yield return new WaitForEndOfFrame ();
 		}
@@ -108,15 +113,19 @@ public class RoomSettings : MonoBehaviour
 		if(StartedRotated){
 			transform.rotation = Quaternion.Euler(Vector3.zero);
 			Globals.PlayerGo.transform.rotation = Quaternion.Euler(Vector3.zero);
-			print(NextRoomSpawnPoint);
 			Globals.PlayerGo.transform.position = PlayerEnteredDoorway.transform.position;
 		}
+	}
+
+	void ApplyEffectsToPlayer(){
+		//TODO if gravity is changed, so should jumpforce
+		Globals.PlayerGo.GetComponent<Rigidbody2D> ().gravityScale = gravity;
+		Time.timeScale = timeScale;
 	}
 	
 
 	void FixedUpdate ()
 	{
-		//TODO if rotation, then the second room should move to fit.
 		if (rotating) {
 			if (rotationCountdown <= 0) {
 				transform.Rotate (transform.forward * 0.2f);
@@ -128,7 +137,6 @@ public class RoomSettings : MonoBehaviour
 			if(playerIsLeaving){
 				NextRoom.rotation = transform.rotation;
 				NextRoom.position = NextRoomSpawnPoint.position;
-//				selectedRoomGo.transform.position = transform.parent.position + direction * 10;
 			}
 		}
 	}
@@ -136,6 +144,7 @@ public class RoomSettings : MonoBehaviour
 	public void PlayerLeaves ()
 	{
 		playerIsLeaving = true;
+		gameObject.SetActive(true);
 		StartCoroutine (PlayerLeavesInternal ());
 	}
 
@@ -152,7 +161,9 @@ public class RoomSettings : MonoBehaviour
 		while (f < 1) {
 			f += Time.deltaTime;
 			foreach (var sprite in roomSprites) {
-				sprite.color = Color.Lerp (roomColour, Color.black, f);
+//				sprite.color = Color.Lerp (roomColour, Color.black, f);
+				sprite.color = Color.Lerp (roomColour, vanishColour, f);
+				
 			}
 			yield return new WaitForEndOfFrame ();
 		}
@@ -179,11 +190,59 @@ public class RoomSettings : MonoBehaviour
 			break;
 		}
 
-		GameObject go = doorways.FirstOrDefault (x => x.DoorwayDirection == wantedDirection).gameObject;
+		GameObject go = Doorways.FirstOrDefault (x => x.DoorwayDirection == wantedDirection).gameObject;
 		if (go == null)
 			Debug.LogError ("The opposite doorway does not exist");
-			
 		return go;
+	}
+
+	public void RoomCleared(){
+		StartCoroutine(RoomClearedInternal());
+	}
+
+	[SerializeField]
+	List<Doorway> lockedDoors;
+
+	IEnumerator RoomClearedInternal(){
+		Globals.PlayerRigid.isKinematic = true;
+		Globals.PlayerGo.GetComponent<UnityStandardAssets._2D.Platformer2DUserControl>().enabled = false;
+		float f = 1;
+
+		//Clear all references to this room.
+
+		List<Doorway> doorwaysToHere = GameObject.FindGameObjectsWithTag("Doorway")
+										   	.Select(x => x.GetComponent<Doorway>())
+											.Where(x => x.availableRooms.Contains(gameObject)).ToList();
+
+		foreach (var door in doorwaysToHere) {
+			door.availableRooms.Remove(gameObject);
+		}
+
+		foreach (var door in lockedDoors) {
+			door.Unlock();
+		}
+
+		while(f > 0){
+			f -= Time.fixedDeltaTime * 0.5f;
+			transform.rotation = Quaternion.Lerp(Quaternion.Euler (Vector3.zero), transform.rotation, f);
+			if(transform.eulerAngles.z < 0.1f || transform.eulerAngles.z > 359.9f)
+				break;
+
+			yield return new WaitForFixedUpdate();
+		}
+
+		Globals.PlayerGo.GetComponent<Platformer2DUserControl>().enabled = true;
+		transform.rotation = Quaternion.Euler(Vector3.zero);
+		Globals.PlayerRigid.isKinematic = false;
+		gravity = 3;
+		timeScale = 1;
+		ApplyEffectsToPlayer();
+	}
+
+
+	public void PlayerDied(){
+		print("Player Died!");
+		Globals.PlayerGo.transform.position = PlayerEnteredDoorway.transform.position;
 	}
 } 
 

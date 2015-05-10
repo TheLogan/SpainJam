@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityStandardAssets._2D;
 
 public class CharacterControls : MonoBehaviour {
 
@@ -10,13 +11,24 @@ public class CharacterControls : MonoBehaviour {
 	bool playIdleAnim = false;
 
 	[SerializeField]
-	UnityStandardAssets._2D.Platformer2DUserControl characterInputs;
+	Platformer2DUserControl characterInputs;
 	[SerializeField]
-	UnityStandardAssets._2D.PlatformerCharacter2D charContr;
+	PlatformerCharacter2D charContr;
+
+	[SerializeField]
+	AudioSource audioSource;
+
+	[SerializeField]
+	AudioClip deathSound;
+
 
 	void Start(){
 		spriteRenderer = GetComponent<SpriteRenderer>();
 		anim = GetComponent<Animator>();
+	}
+
+	public void PlayerDied(){
+		audioSource.PlayOneShot(deathSound);
 	}
 
 	public void MoveToRoom(GameObject oldDoor, GameObject nextDoor){
